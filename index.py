@@ -66,11 +66,14 @@ class Conf(object):
             self.config.set('options', 'admins', '')
             self.config.write(fh)
             fh.close()
-            self.msg = 'created config file %s ...' % (configfile)
+            self.msg += 'created config file %s ...\n' % (configfile)
         self.default_type = self.config.get('options', 'default_type')
         self.odir = self.config.get('options', 'book_path')
         self.ourl = self.config.get('options', 'book_url')
         self.admins = self.config.get('options', 'admins').split(' ')
+        if not os.path.exists(self.odir):
+            self.msg += 'creating dir %s ...\n' % self.odir
+            os.makedirs(self.odir, 0777)
 
 def norm_book_name(title, author):
     '''
@@ -173,7 +176,7 @@ def index(req):
     ''')
 
     if conf.msg:
-        req.write('%s\n' % conf.msg)
+        req.write('%s' % conf.msg)
 
     if req.user in conf.admins and url == 'help':
         req.write(usage(conf.default_type))
