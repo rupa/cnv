@@ -15,6 +15,8 @@ except:
 def usage(default_type):
     return '''
 
+<a class="t" href="/">[back]</a>
+
 ?u=help
 
     Show this message.
@@ -45,6 +47,10 @@ config:
     book_path    - filesystem path to book dir
     default_type - default to convert to. A value of NONE does not convert.
     book_url     - url of book dir
+
+formats:
+
+    see <a href="http://calibre-ebook.com/user_manual/cli/ebook-convert.html">http://calibre-ebook.com/user_manual/cli/ebook-convert.html</a>
 
     ''' % (default_type, '%s/config' % os.path.dirname(__file__))
 
@@ -90,6 +96,14 @@ def norm_book_name(title, author):
     else:
         nauth = lname
     return '%s-%s' % (nauth.replace(' ', '_'), title.replace(' ', '_'))
+
+class MyURLopener(urllib.FancyURLopener):
+    def auth(self, user, passwd):
+        self.user = user
+        self.passwd = passwd
+        return self
+    def prompt_user_passwd(self, host, realm):
+        return self.user, self.passwd
 
 def from_url(url, odir, title, author):
     '''
@@ -169,7 +183,8 @@ def index(req):
                 font-family: monospace;
             }
             a { text-decoration: none }
-            a.p { color: blue }
+            a.c { color: blue }
+            a.t { font-family: helvetica }
             .b { font-size: 2em }
         </style>
         </head>
@@ -184,6 +199,8 @@ def index(req):
 
     if req.method == 'POST' and url and oext and author and title:
         req.write('getting %s...\n' % url)
+        urllib._urlopener = MyURLopener().auth(req.user,
+                                               req.get_basic_auth_pw())
         iname, headers = from_url(url, conf.odir, title, author)
         for k,v in headers.items():
             req.write('%s: %s\n' % (k, v))
@@ -193,11 +210,12 @@ def index(req):
             convert(req, iname, oname, title, author)
         req.write('\n\n<a href="%s">done</a>' % (home))
     else:
+        if req.user in conf.admins:
+            req.write('<a class="t">Hi, %s</a> <a class="t" href="?u=help">[help]</a>' % req.user)
         req.write('''
-        Hi, %s
         <form method="get", action="%s">
         <input value="%s" name="s" size=41> <input type="submit" value="search">
-        </form>''' % (req.user, home, srch))
+        </form>''' % (home, srch))
         if req.user in conf.admins:
             req.write('''<form method="post", action="%s">
      u: <input value="%s" name="u" size=50>
@@ -207,10 +225,10 @@ def index(req):
         </form>''' % (home, url, title, author, oext))
 
         if req.user in conf.admins:
-            fmt = '<a class="p" href="%s?u=%s%%s">[c]</a> ' % (home, conf.ourl)
+            fmt = '<a class="c" href="%s?u=%s%%s">[c]</a> ' % (home, conf.ourl)
         else:
             fmt = '<a id="%s"></a>'
-        fmt = '\n%s<a href="%%s%%s">%%s</a>' % fmt
+        fmt = '\n%s<a class="t" href="%%s%%s">%%s</a>' % fmt
         for i in sorted(os.listdir(conf.odir)):
             if os.path.isdir('%s%s' % (conf.odir, i)):
                 continue
