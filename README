@@ -1,0 +1,24 @@
+ebook manager for apache and mod_python.
+    uses calibre's ebook-convert and ebook-meta tools.
+    gank, normalize, convert, and download ebooks.
+
+    gank:
+        grabs books from urls
+    normalize:
+        makes filenames LNAME,FNAME_MNAME-TITLE.EXT
+        sets author and title metadata if possible
+    convert:
+        convert to any format calibre supports
+    download:
+        all files are web-accesible
+
+for kindle, in .htaccess:
+    AddType application/x-mobipocket-ebook mobi
+    AddType application/octet-stream azw prc
+
+supports basic authentication. in .htaccess:
+    AuthUserFile /path/to/.htpasswd
+    AuthGroupFile /dev/null
+    AuthName "cnv"
+    AuthType Basic
+    require valid-user
