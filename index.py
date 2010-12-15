@@ -4,16 +4,7 @@
 
 import os, pipes, shutil, urllib
 import subprocess
-
-# apache to have write perms to these
-# base path
-bdir = '/home/rupa/www/rupa.at/cnv/'
-# base url
-burl = 'http://cnv.rupa.at/'
-# output dir name
-odirname = 'books/'
-# default type to convert to
-default_type = '.mobi'
+import ConfigParser
 
 try:
     from mod_python import util
@@ -22,8 +13,23 @@ except:
         def write(self, str):
             print str
 
-odir = '%s%s' % (bdir, odirname)
-ourl = '%s%s' % (burl, odirname)
+msg = ''
+config = ConfigParser.RawConfigParser()
+configfile = '%s/config' % os.path.dirname(__file__)
+if os.path.exists(configfile):
+    config.read(configfile)
+else:
+    fh = open(configfile, 'wb')
+    config.add_section('options')
+    config.set('options', 'default_type', '.mobi')
+    config.set('options', 'folder_name', 'books/')
+    config.write(fh)
+    fh.close()
+    msg = 'created config file %s ...' % configfile
+default_type = config.get('options', 'default_type')
+odirname = config.get('options', 'folder_name')
+
+odir = '%s/%s' % (os.path.dirname(__file__), odirname)
 
 def norm_book_name(title, author):
     '''
@@ -144,39 +150,34 @@ def index(req):
 
         convert(req, iname, oname, title, author)
 
-        req.write('\n\n<a href="%s">done</a>' % (burl))
+        req.write('\n\n<a href="%s">done</a>' % ('http://' + req.hostname + '/'))
         req.write('</pre>')
     else:
         req.write('''
         <pre>
+        %s
         <form method="post", action="/">
      u: <input value="%s" name="u" size=50>
     to: <input value="%s" name="to" size=10>
      t: <input value="%s" name="t" size=50>
      a: <input value="%s" name="a" size=50>
         <input type="submit" value="convert">
-        </form>''' % (url, oext, title, author))
+        </form>''' % (msg, url, oext, title, author))
         fmt = '\n\t<a class="p" href="%s?u=%s%s">%s</a> <a href="%s%s">%s</a>'
         for i in os.listdir(odir):
             if os.path.isdir('%s%s' % (odir, i)):
                 continue
             if srch and srch not in i:
                 continue
-            req.write(fmt % (burl, ourl, i,
-                             #u'<span class="b">\u21D4</span>'.encode('utf-8'),
+            req.write(fmt % ('http://' + req.hostname + '/',
+                             'http://' + req.hostname + '/' + odirname,
+                             i,
                              '[c]',
-                             ourl, i, i))
+                             'http://' + req.hostname + '/' + odirname,
+                             i, i))
         req.write('\n\t</pre>')
 
 if __name__ == '__main__':
     req = Req()
-    req.write('''
-    this script intended to run under mod_python
-
-        bdir: %s
-        burl: %s
-        odir: %s
-        ourl: %s
-default_type: %s
-    ''' % (bdir, burl, odir, ourl, default_type))
+    req.write('this script intended to run under mod_python.')
     req.write(usage())
