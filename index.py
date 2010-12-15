@@ -139,6 +139,11 @@ def index(req):
         req.write(usage())
         return
 
+    home = 'http://%s%s' % (req.hostname, os.path.dirname(req.uri))
+    if not home.endswith('/'):
+        home += '/'
+    odirurl = home + odirname
+
     if req.method == 'POST' and url and oext and author and title:
         req.write('<pre>')
         req.write('getting %s...\n' % url)
@@ -150,31 +155,31 @@ def index(req):
 
         convert(req, iname, oname, title, author)
 
-        req.write('\n\n<a href="%s">done</a>' % ('http://' + req.hostname + '/'))
+        req.write('\n\n<a href="%s">done</a>' % (home))
         req.write('</pre>')
     else:
         req.write('''
         <pre>
-        %s
-        <form method="post", action="/">
+        <form method="post", action="%s">
      u: <input value="%s" name="u" size=50>
     to: <input value="%s" name="to" size=10>
      t: <input value="%s" name="t" size=50>
      a: <input value="%s" name="a" size=50>
         <input type="submit" value="convert">
-        </form>''' % (msg, url, oext, title, author))
+        </form>''' % (home, url, oext, title, author))
         fmt = '\n\t<a class="p" href="%s?u=%s%s">%s</a> <a href="%s%s">%s</a>'
-        for i in os.listdir(odir):
+        for i in sorted(os.listdir(odir)):
             if os.path.isdir('%s%s' % (odir, i)):
                 continue
             if srch and srch not in i:
                 continue
-            req.write(fmt % ('http://' + req.hostname + '/',
-                             'http://' + req.hostname + '/' + odirname,
+            req.write(fmt % (home,
+                             odirurl,
                              i,
                              '[c]',
-                             'http://' + req.hostname + '/' + odirname,
-                             i, i))
+                             odirurl,
+                             i,
+                             i))
         req.write('\n\t</pre>')
 
 if __name__ == '__main__':
