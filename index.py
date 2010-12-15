@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-# web interface to calibre's ebook-convert utility
-# requires calibre
+# mod_python web interface to calibre's ebook-convert utility
 
 import os, pipes, shutil, urllib
 import subprocess
@@ -13,23 +12,65 @@ except:
         def write(self, str):
             print str
 
-msg = ''
-config = ConfigParser.RawConfigParser()
-configfile = '%s/config' % os.path.dirname(__file__)
-if os.path.exists(configfile):
-    config.read(configfile)
-else:
-    fh = open(configfile, 'wb')
-    config.add_section('options')
-    config.set('options', 'default_type', '.mobi')
-    config.set('options', 'folder_name', 'books/')
-    config.write(fh)
-    fh.close()
-    msg = 'created config file %s ...' % configfile
-default_type = config.get('options', 'default_type')
-odirname = config.get('options', 'folder_name')
+def usage(default_type):
+    return '''
 
-odir = '%s/%s' % (os.path.dirname(__file__), odirname)
+?u=help
+
+    Show this message.
+
+?s=<b>SEARCH</b>
+
+    Only show books matching <b>SEARCH</b> string.
+
+?u=<b>BOOKURL</b>&to=<b>.EXT</b>&t=<b>TITLE</b>&a=<b>AUTHOR</b>
+
+    Fetch a book from <b>BOOKURL</b>, and convert it to <b>.EXT</b>.
+    Normalize the filename by <b>AUTHOR</b> and <b>TITLE</b>.
+
+    BOOKURL - required. url to an ebook file.
+    .EXT    - optional. defaults to %s. Value of NONE simply gets a local copy,
+    TITLE   - required. Title of book.
+    AUTHOR  - required, Author (expects FML. multiple authors not supported)
+
+    Conversion requires a POST, but GET requests will be cause the form to
+    be filled appropriately.
+
+config:
+
+    On first run, a config file is generated at %s.
+    You may wish to edit this file.
+
+    admins       - space separated list of users
+    book_path    - filesystem path to book dir
+    default_type - default to convert to. A value of NONE does not convert.
+    book_url     - url of book dir
+
+    ''' % (default_type, '%s/config' % os.path.dirname(__file__))
+
+class Conf(object):
+    def __init__(self, c={}):
+        self.msg = ''
+        self.config = ConfigParser.RawConfigParser()
+        configfile = '%s/config' % os.path.dirname(__file__)
+        if os.path.exists(configfile):
+            self.config.read(configfile)
+        elif not c:
+            return
+        else:
+            fh = open(configfile, 'wb')
+            self.config.add_section('options')
+            self.config.set('options', 'default_type', '.epub')
+            self.config.set('options', 'book_path', c['path'] + 'books/')
+            self.config.set('options', 'book_url', c['url'] + 'books/')
+            self.config.set('options', 'admins', '')
+            self.config.write(fh)
+            fh.close()
+            self.msg = 'created config file %s ...' % (configfile)
+        self.default_type = self.config.get('options', 'default_type')
+        self.odir = self.config.get('options', 'book_path')
+        self.ourl = self.config.get('options', 'book_url')
+        self.admins = self.config.get('options', 'admins').split(' ')
 
 def norm_book_name(title, author):
     '''
@@ -47,16 +88,28 @@ def norm_book_name(title, author):
         nauth = lname
     return '%s-%s' % (nauth.replace(' ', '_'), title.replace(' ', '_'))
 
-def book_from_url(url, title, author):
+def from_url(url, odir, title, author):
     '''
     grab a book from a url and normalize its filename
     '''
+    msg = ''
     iname, iext = os.path.splitext(url)
     oname = norm_book_name(title, author)
     opath = '%s%s%s' % (odir, oname, iext)
     if os.path.exists(opath):
-        return opath, { 'msg:' : 'file already retrieved' }
+        return opath, { 'msg' : 'file already retrieved' }
+
+    old_file = False
+    if os.path.exists('%s%s' % (odir, os.path.basename(url))):
+        old_file = True
+
     f, h = urllib.urlretrieve(url, '%s%s%s' % (odir, oname, iext))
+
+    # delete old (poorly named) files if they are in the library
+    if old_file:
+        h['msg'] = 'deleting old file %s ...\n' %  os.path.basename(url)
+        os.unlink('%s%s' % (odir, os.path.basename(url)))
+
     return f, h
 
 def convert(req, fl, ofl, title, author):
@@ -82,52 +135,36 @@ def convert(req, fl, ofl, title, author):
     req.write(p.stdout.read())
     req.write(p.stderr.read())
     req.write('\n\n')
-    #cm2 = 'ebook-meta -a "%s" -t "%s" %s' % (author, title, pipes.quote(ofl))
-    #req.write('running: ' + cm2 + '\n\n')
-    #p = run(cm2)
-    #req.write(p.stdout.read())
-    #req.write(p.stderr.read())
-    #req.write('\n\n')
 
-def usage():
-    return '''
-    <pre>
-
-    ?u=help
-
-        Show this message.
-
-    ?u=<b>BOOKURL</b>&to=<b>.EXT</b>&t=<b>TITLE</b>&a=<b>AUTHOR</b>
-
-        Fetch a book from <b>BOOKURL</b>, and convert it to <b>.EXT</b>.
-        Normalize the filename by <b>AUTHOR</b> and <b>TITLE</b>.
-
-        BOOKURL - required. url to an ebook file.
-        .EXT    - optional. defaults to %s
-        TITLE   - required. Title of book.
-        AUTHOR  - required, Author (expects FML. multiple authors not supported)
-
-        Conversion requires a POST, but GET requests will be cause the form to
-        be filled appropriately.
-
-    ?s=<b>SEARCH</b>
-
-        Only show books matching <b>SEARCH</b> string.
-    </pre>
-    ''' % default_type
+    cm2 = 'ebook-meta %s' % (pipes.quote(ofl))
+    req.write('running: ' + cm2 + '\n\n')
+    p = run(cm2)
+    req.write(p.stdout.read())
+    req.write(p.stderr.read())
+    req.write('\n\n')
 
 def index(req):
+
+    home = 'http://%s%s' % (req.hostname, os.path.dirname(req.uri))
+    if not home.endswith('/'):
+        home += '/'
+    conf = Conf({ 'path' : os.path.dirname(__file__) + '/', 'url' : home })
+
     req.content_type = 'text/html; charset=utf-8'
     url = req.form.getfirst('u') or ''
-    oext = req.form.getfirst('to') or default_type
+    oext = req.form.getfirst('to') or conf.default_type
     author = req.form.getfirst('a') or ''
     title = req.form.getfirst('t') or ''
     srch = req.form.getfirst('s') or ''
 
     req.write('''
         <head>
-        <title>cnv.rupa.at</title>
+        <title>cnv</title>
         <style>
+            body {
+                white-space: pre;
+                font-family: monospace;
+            }
             a { text-decoration: none }
             a.p { color: blue }
             .b { font-size: 2em }
@@ -135,54 +172,55 @@ def index(req):
         </head>
     ''')
 
-    if url == 'help':
-        req.write(usage())
+    if conf.msg:
+        req.write('%s\n' % conf.msg)
+
+    if req.user in conf.admins and url == 'help':
+        req.write(usage(conf.default_type))
         return
 
-    home = 'http://%s%s' % (req.hostname, os.path.dirname(req.uri))
-    if not home.endswith('/'):
-        home += '/'
-    odirurl = home + odirname
-
     if req.method == 'POST' and url and oext and author and title:
-        req.write('<pre>')
         req.write('getting %s...\n' % url)
-        iname, headers = book_from_url(url, title, author)
-        oname = '%s%s%s' % (odir, norm_book_name(title, author), oext)
-
+        iname, headers = from_url(url, conf.odir, title, author)
         for k,v in headers.items():
             req.write('%s: %s\n' % (k, v))
 
-        convert(req, iname, oname, title, author)
-
+        if oext.upper() != 'NONE':
+            oname = '%s%s%s' % (conf.odir, norm_book_name(title, author), oext)
+            convert(req, iname, oname, title, author)
         req.write('\n\n<a href="%s">done</a>' % (home))
-        req.write('</pre>')
     else:
         req.write('''
-        <pre>
-        <form method="post", action="%s">
+        Hi, %s
+        <form method="get", action="%s">
+        <input value="%s" name="s" size=41> <input type="submit" value="search">
+        </form>''' % (req.user, home, srch))
+        if req.user in conf.admins:
+            req.write('''<form method="post", action="%s">
      u: <input value="%s" name="u" size=50>
-    to: <input value="%s" name="to" size=10>
      t: <input value="%s" name="t" size=50>
      a: <input value="%s" name="a" size=50>
-        <input type="submit" value="convert">
-        </form>''' % (home, url, oext, title, author))
-        fmt = '\n\t<a class="p" href="%s?u=%s%s">%s</a> <a href="%s%s">%s</a>'
-        for i in sorted(os.listdir(odir)):
-            if os.path.isdir('%s%s' % (odir, i)):
+    to: <input value="%s" name="to" size=10> <input type="submit" value="convert">
+        </form>''' % (home, url, title, author, oext))
+
+        if req.user in conf.admins:
+            fmt = '<a class="p" href="%s?u=%s%%s">[c]</a> ' % (home, conf.ourl)
+        else:
+            fmt = '<a id="%s"></a>'
+        fmt = '\n%s<a href="%%s%%s">%%s</a>' % fmt
+        for i in sorted(os.listdir(conf.odir)):
+            if os.path.isdir('%s%s' % (conf.odir, i)):
                 continue
-            if srch and srch not in i:
+            if i == '.htaccess':
                 continue
-            req.write(fmt % (home,
-                             odirurl,
-                             i,
-                             '[c]',
-                             odirurl,
-                             i,
-                             i))
-        req.write('\n\t</pre>')
+            if srch and srch.lower() not in i.lower():
+                continue
+            if len(i) > 65:
+                s = '%s ...' % i[:65]
+            else:
+                s = i
+            req.write(fmt % (i, conf.ourl, i, s))
 
 if __name__ == '__main__':
     req = Req()
     req.write('this script intended to run under mod_python.')
-    req.write(usage())
