@@ -71,12 +71,12 @@ def convert(req, fl, ofl, title, author):
                                                                pipes.quote(ofl),
                                                                author,
                                                                title)
-    #cm2 = 'ebook-meta -a "%s" -t "%s" %s' % (author, title, pipes.quote(ofl))
     req.write('running: ' + cmd + '\n\n')
     p = run(cmd)
     req.write(p.stdout.read())
     req.write(p.stderr.read())
     req.write('\n\n')
+    #cm2 = 'ebook-meta -a "%s" -t "%s" %s' % (author, title, pipes.quote(ofl))
     #req.write('running: ' + cm2 + '\n\n')
     #p = run(cm2)
     #req.write(p.stdout.read())
@@ -87,27 +87,47 @@ def usage():
     return '''
     <pre>
 
-    Fetch a book from <b>BOOKURL</b>, and convert it to <b>.EXT</b>.
-    Normalize the filename by author and title.
+    ?u=help
 
-    Conversion requires a POST but GET requests will be cause the form to be 
-    filled appropriately.
+        Show this message.
 
     ?u=<b>BOOKURL</b>&to=<b>.EXT</b>&t=<b>TITLE</b>&a=<b>AUTHOR</b>
 
-    BOOKURL - required, url to an ebook file.
-    .EXT    - optional. defaults to %s
-    TITLE   - required. Title of book.
-    AUTHOR  - required, Author (expects FML. multiple authors not supported)
+        Fetch a book from <b>BOOKURL</b>, and convert it to <b>.EXT</b>.
+        Normalize the filename by <b>AUTHOR</b> and <b>TITLE</b>.
+
+        BOOKURL - required. url to an ebook file.
+        .EXT    - optional. defaults to %s
+        TITLE   - required. Title of book.
+        AUTHOR  - required, Author (expects FML. multiple authors not supported)
+
+        Conversion requires a POST, but GET requests will be cause the form to
+        be filled appropriately.
+
+    ?s=<b>SEARCH</b>
+
+        Only show books matching <b>SEARCH</b> string.
     </pre>
     ''' % default_type
 
 def index(req):
-    req.content_type = 'text/html'
+    req.content_type = 'text/html; charset=utf-8'
     url = req.form.getfirst('u') or ''
     oext = req.form.getfirst('to') or default_type
     author = req.form.getfirst('a') or ''
     title = req.form.getfirst('t') or ''
+    srch = req.form.getfirst('s') or ''
+
+    req.write('''
+        <head>
+        <title>cnv.rupa.at</title>
+        <style>
+            a { text-decoration: none }
+            a.p { color: blue }
+            .b { font-size: 2em }
+        </style>
+        </head>
+    ''')
 
     if url == 'help':
         req.write(usage())
@@ -135,13 +155,18 @@ def index(req):
      t: <input value="%s" name="t" size=50>
      a: <input value="%s" name="a" size=50>
         <input type="submit" value="convert">
-        </form>
-        ''' % (url, oext, title, author))
-        fmt = '\n\t<a href="%s?u=%s%s">%s</a> <a href="%s%s">%s</a>'
+        </form>''' % (url, oext, title, author))
+        fmt = '\n\t<a class="p" href="%s?u=%s%s">%s</a> <a href="%s%s">%s</a>'
         for i in os.listdir(odir):
             if os.path.isdir('%s%s' % (odir, i)):
                 continue
-            req.write(fmt % (burl, ourl, i, '[c]', ourl, i, i))
+            if srch and srch not in i:
+                continue
+            req.write(fmt % (burl, ourl, i,
+                             #u'<span class="b">\u21D4</span>'.encode('utf-8'),
+                             '[c]',
+                             ourl, i, i))
+        req.write('\n\t</pre>')
 
 if __name__ == '__main__':
     req = Req()
@@ -154,3 +179,4 @@ if __name__ == '__main__':
         ourl: %s
 default_type: %s
     ''' % (bdir, burl, odir, ourl, default_type))
+    req.write(usage())
