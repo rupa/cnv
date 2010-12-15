@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # mod_python web interface to calibre's ebook-convert utility
 
-import os, pipes, shutil, urllib
+import os, pipes, re, shutil, time, urllib
 import subprocess
 import ConfigParser
 
@@ -112,19 +112,20 @@ def from_url(url, odir, title, author):
     msg = ''
     iname, iext = os.path.splitext(url)
     oname = norm_book_name(title, author)
-    opath = '%s%s%s' % (odir, oname, iext)
+    opath = '%s%s%s' % (odir, oname, iext.lower())
     if os.path.exists(opath):
-        return opath, { 'msg' : 'file already retrieved' }
+        return opath, { 'msg' : 'file %s already retrieved' % opath }
 
     old_file = False
     if os.path.exists('%s%s' % (odir, os.path.basename(url))):
         old_file = True
 
-    f, h = urllib.urlretrieve(url, '%s%s%s' % (odir, oname, iext))
+    f, h = urllib.urlretrieve(url, opath)
+    h['msg'] = 'got file %s ...\n' % opath
 
     # delete old (poorly named) files if they are in the library
     if old_file:
-        h['msg'] = 'deleting old file %s ...\n' %  os.path.basename(url)
+        h['msg'] += 'deleting old file %s ...\n' %  os.path.basename(url)
         os.unlink('%s%s' % (odir, os.path.basename(url)))
 
     return f, h
@@ -174,6 +175,9 @@ def index(req):
     title = req.form.getfirst('t') or ''
     srch = req.form.getfirst('s') or ''
 
+    if srch:
+        match = re.compile(srch, re.I)
+
     req.write('''
         <head>
         <title>cnv</title>
@@ -211,7 +215,7 @@ def index(req):
         req.write('\n\n<a href="%s">done</a>' % (home))
     else:
         if req.user in conf.admins:
-            req.write('<a class="t">Hi, %s</a> <a class="t" href="?u=help">[help]</a>' % req.user)
+            req.write('<a class="t" href="?u=help">Hi, %s</a>' % req.user)
         req.write('''
         <form method="get", action="%s">
         <input value="%s" name="s" size=41> <input type="submit" value="search">
@@ -228,19 +232,26 @@ def index(req):
             fmt = '<a class="c" href="%s?u=%s%%s">[c]</a> ' % (home, conf.ourl)
         else:
             fmt = '<a id="%s"></a>'
-        fmt = '\n%s<a class="t" href="%%s%%s">%%s</a>' % fmt
-        for i in sorted(os.listdir(conf.odir)):
+        fmt = '\n%s<a class="t" title="%%s" href="%%s%%s">%%s</a>' % fmt
+
+        files = []
+        for file in os.listdir(conf.odir):
+            stats = os.stat(conf.odir + file)
+            files.append((time.localtime(stats[8]), file, stats[6]))
+
+        #for i in sorted(os.listdir(conf.odir)):
+        for (dt, i, sz) in sorted(files, reverse=True):
             if os.path.isdir('%s%s' % (conf.odir, i)):
                 continue
             if i == '.htaccess':
                 continue
-            if srch and srch.lower() not in i.lower():
+            if srch and not match.search(i):
                 continue
             if len(i) > 65:
                 s = '%s ...' % i[:65]
             else:
                 s = i
-            req.write(fmt % (i, conf.ourl, i, s))
+            req.write(fmt % (i, '%sK' % (sz//1024), conf.ourl, i, s))
 
 if __name__ == '__main__':
     req = Req()
