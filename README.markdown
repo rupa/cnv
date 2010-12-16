@@ -4,6 +4,9 @@
     uses calibre's ebook-convert and ebook-meta tools.
     gank, normalize, convert, and download ebooks.
 
+    The idea is you can use it from a kindle or iphone or whatever,
+    with just a web browser.
+
     gank:
         grabs books from urls
     normalize:
@@ -15,6 +18,8 @@
         all files are web-accesible
 
 ##INSTALLATION
+
+    Install calibre. We use the ebook-convert and ebook-meta tools.
 
     clone cnv to a web-accessible folder with mod_python
     set to run .py files.
@@ -48,6 +53,30 @@
         AuthName "cnv"
         AuthType Basic
         require valid-user
+
+##USAGE
+
+    Search:
+        Only show files matching regex.
+
+    Convert form:
+         u: url to an ebook. Local or remote.
+         t: title
+         a: author (FML)
+        to: format to convert to. NONE to keep current format
+
+        See [calibre docs](http://calibre-ebook.com/user_manual/cli/ebook-convert.html)
+        for supported formats:
+
+        Grabs a local copy of the file, named according to title and author.
+        Remove old local copy if name has changed.
+        Create new file, named accordding to title, author, and file type.
+
+    Books in library are shown most recently modified first.
+
+    By default, any one can add and convert files. Set up basic authentication
+    to restrict users. Add specific users to config to further restrict
+    add/convert rights.
 
 ##MISC
 
