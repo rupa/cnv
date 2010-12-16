@@ -251,9 +251,9 @@ def index(req):
             files.append((time.localtime(stats[8]), file, stats[6]))
 
         for (dt, i, sz) in sorted(files, reverse=True):
-            if os.path.isdir('%s%s' % (conf.odir, i)):
+            if i.startswith('.'):
                 continue
-            if i == '.htaccess':
+            if os.path.isdir('%s%s' % (conf.odir, i)):
                 continue
             if srch and not match.search(i):
                 continue
