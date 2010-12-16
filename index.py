@@ -78,7 +78,9 @@ class Conf(object):
         self.default_type = self.config.get('options', 'default_type')
         self.odir = self.config.get('options', 'book_path')
         self.ourl = self.config.get('options', 'book_url')
-        self.admins = self.config.get('options', 'admins').split(' ')
+        self.admins = self.config.get('options', 'admins')
+        if self.admins:
+            self.admins = self.admins.split(' ')
         if not os.path.exists(self.odir):
             self.msg += 'creating dir %s ...\n' % self.odir
             os.makedirs(self.odir, 0777)
@@ -199,11 +201,14 @@ def index(req):
     if conf.msg:
         req.write('%s' % conf.msg)
 
-    if req.user in conf.admins and url == 'help':
+    if (not conf.admins or req.user in conf.admins) and url == 'help':
         req.write(usage(conf.default_type))
         return
 
     if req.method == 'POST' and url and oext and author and title:
+        if conf.admins and req.user not in conf.admins:
+            req.write('\n\n<a href="%s">not allowed ...</a>' % (home))
+            return
         req.write('getting %s...\n' % url)
         urllib._urlopener = MyURLopener().auth(req.user,
                                                req.get_basic_auth_pw())
@@ -216,13 +221,13 @@ def index(req):
             convert(req, iname, oname, title, author)
         req.write('\n\n<a href="%s">done</a>' % (home))
     else:
-        if req.user in conf.admins:
+        if not conf.admins or req.user in conf.admins:
             req.write('<a class="t" href="?u=help">Hi, %s</a>' % req.user)
         req.write('''
         <form method="get", action="%s">
         <input value="%s" name="s" size=41> <input type="submit" value="search">
         </form>''' % (home, srch))
-        if req.user in conf.admins:
+        if not conf.admins or req.user in conf.admins:
             req.write('''<form method="post", action="%s">
      u: <input value="%s" name="u" size=50>
      t: <input value="%s" name="t" size=50>
@@ -230,7 +235,7 @@ def index(req):
     to: <input value="%s" name="to" size=10> <input type="submit" value="convert">
         </form>''' % (home, url, title, author, oext))
 
-        if req.user in conf.admins:
+        if not conf.admins or req.user in conf.admins:
             fmt = '<a class="c" href="%s?u=%s%%s">[c]</a> ' % (home, conf.ourl)
         else:
             fmt = '<a id="%s"></a>'
