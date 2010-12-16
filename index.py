@@ -14,10 +14,10 @@ except:
         def write(self, str):
             print str
 
-def usage(default_type):
+def usage(home, default_type):
     return '''
 
-<a class="t" href="/">[back]</a>
+<a class="t" href="%s">[back]</a>
 
 ?u=help
 
@@ -54,7 +54,7 @@ formats:
 
     see <a href="http://calibre-ebook.com/user_manual/cli/ebook-convert.html">http://calibre-ebook.com/user_manual/cli/ebook-convert.html</a>
 
-    ''' % (default_type, '%s/config' % os.path.dirname(__file__))
+    ''' % (home, default_type, '%s/config' % os.path.dirname(__file__))
 
 class Conf(object):
     def __init__(self, c={}):
@@ -72,6 +72,7 @@ class Conf(object):
             self.config.set('options', 'book_path', c['path'] + 'books/')
             self.config.set('options', 'book_url', c['url'] + 'books/')
             self.config.set('options', 'admins', '')
+            self.config.set('options', 'display', '')
             self.config.write(fh)
             fh.close()
             self.msg += 'created config file %s ...\n' % (configfile)
@@ -79,6 +80,7 @@ class Conf(object):
         self.odir = self.config.get('options', 'book_path')
         self.ourl = self.config.get('options', 'book_url')
         self.admins = self.config.get('options', 'admins')
+        self.display = self.config.get('options', 'display')
         if self.admins:
             self.admins = self.admins.split(' ')
         if not os.path.exists(self.odir):
@@ -134,7 +136,7 @@ def from_url(url, odir, title, author):
 
     return f, h
 
-def convert(req, fl, ofl, title, author):
+def convert(req, fl, ofl, title, author, display):
     def run(cmd):
         return subprocess.Popen(cmd, shell=True,
                                 stdin=subprocess.PIPE,
@@ -147,8 +149,10 @@ def convert(req, fl, ofl, title, author):
     if os.path.exists(ofl):
         req.write('%s already exists' % (fl))
         return
+    if display:
+        display = 'DISPLAY=%s' % display
 
-    cmd = '%s ebook-convert %s %s --authors="%s" --title="%s"' % ('DISPLAY=:0.0',
+    cmd = '%s ebook-convert %s %s --authors="%s" --title="%s"' % (display,
                                                                   pipes.quote(fl),
                                                                   pipes.quote(ofl),
                                                                   author,
@@ -202,7 +206,7 @@ def index(req):
         req.write('%s' % conf.msg)
 
     if (not conf.admins or req.user in conf.admins) and url == 'help':
-        req.write(usage(conf.default_type))
+        req.write(usage(home, conf.default_type))
         return
 
     if req.method == 'POST' and url and oext and author and title:
@@ -218,7 +222,7 @@ def index(req):
 
         if oext.upper() != 'NONE':
             oname = '%s%s%s' % (conf.odir, norm_book_name(title, author), oext)
-            convert(req, iname, oname, title, author)
+            convert(req, iname, oname, title, author, conf.display)
         req.write('\n\n<a href="%s">done</a>' % (home))
     else:
         if not conf.admins or req.user in conf.admins:
