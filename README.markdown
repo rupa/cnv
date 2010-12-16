@@ -65,24 +65,24 @@
        Normal view:
        Books listed newest modified first.
 
-   ![normal](static/cnv-norm.png)
+   ![normal](https://github.com/rupa/cnv/raw/master/static/cnv-norm.png)
 
        Searching:
        With regexes.
 
-   ![search](static/cnv-search.png)
+   ![search](https://github.com/rupa/cnv/raw/master/static/cnv-search.png)
 
        Admin view:
        Admins can add and convert boooks
        Clicking [c] sets the form field to that book.
 
-   ![admin](static/cnv-admin.png)
+   ![admin](https://github.com/rupa/cnv/raw/master/static/cnv-admin.png)
 
        About to convert a book:
 
-   ![convert](static/cnv-conv1.png)
+   ![convert](https://github.com/rupa/cnv/raw/master/static/cnv-conv1.png)
 
        Converting:
        See how it goes.
 
-   ![convert](static/cnv-conv2.png)
+   ![convert](https://github.com/rupa/cnv/raw/master/static/cnv-conv2.png)
