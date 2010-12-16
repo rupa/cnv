@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # mod_python web interface to calibre's ebook-convert utility
+# needs xvfb if :0.0 isn't up
+# Xvfb :0 -ac
 
 import os, pipes, re, shutil, time, urllib
 import subprocess
@@ -144,10 +146,11 @@ def convert(req, fl, ofl, title, author):
         req.write('%s already exists' % (fl))
         return
 
-    cmd = 'ebook-convert %s %s --authors="%s" --title="%s"' % (pipes.quote(fl),
-                                                               pipes.quote(ofl),
-                                                               author,
-                                                               title)
+    cmd = '%s ebook-convert %s %s --authors="%s" --title="%s"' % ('DISPLAY=:0.0',
+                                                                  pipes.quote(fl),
+                                                                  pipes.quote(ofl),
+                                                                  author,
+                                                                  title)
     req.write('running: ' + cmd + '\n\n')
     p = run(cmd)
     req.write(p.stdout.read())
@@ -188,8 +191,7 @@ def index(req):
             }
             a { text-decoration: none }
             a.c { color: blue }
-            a.t { font-family: helvetica }
-            .b { font-size: 2em }
+            a.t { font-family: helvetica, arial }
         </style>
         </head>
     ''')
@@ -239,7 +241,6 @@ def index(req):
             stats = os.stat(conf.odir + file)
             files.append((time.localtime(stats[8]), file, stats[6]))
 
-        #for i in sorted(os.listdir(conf.odir)):
         for (dt, i, sz) in sorted(files, reverse=True):
             if os.path.isdir('%s%s' % (conf.odir, i)):
                 continue
@@ -251,7 +252,11 @@ def index(req):
                 s = '%s ...' % i[:65]
             else:
                 s = i
-            req.write(fmt % (i, '%sK' % (sz//1024), conf.ourl, i, s))
+            req.write(fmt % (urllib.quote(i),
+                             '%sK' % (sz//1024),
+                             conf.ourl,
+                             urllib.quote(i),
+                             s))
 
 if __name__ == '__main__':
     req = Req()
