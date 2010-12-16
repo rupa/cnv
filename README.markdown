@@ -16,13 +16,23 @@
 
 ##INSTALLATION
 
-    drop index.py in a web-accessible folder with mod_python
-    set to run .py files, and write permissions for apache.
+    clone cnv to a web-accessible folder with mod_python
+    set to run .py files.
+
+    make sure apache has write permissions to cnv folder
 
     Visit the directory in a browser, should see a message about
-    a config file being created.
+    a config file and a book dir being created.
 
     Adjust configuration.
+        admins       - space separated list of users. if empty,
+                       everyone is an admin.
+        display      - explicitly set $DISPLAY. for use with xvfb
+        book_path    - filesystem path to book dir
+        default_type - default to convert to. A value of NONE does not convert.
+        book_url     - url of book dir
+
+    make sure apache has write permissions to book_path
 
     Set up .htaccess authentication and/or mimetypes
 
@@ -43,9 +53,36 @@
 
     some conversions fail without an X server running (grr)
         use Xvfb if :0.0 not available
-        see upstart job at static/xvfb.conf
+        upstart job to keep Xvfb running?
 
 ##TODO
 
     better xvfb support
     config option for DISPLAY
+
+##SCREENSHOTS
+
+       Normal view:
+       Books listed newest modified first.
+
+   ![normal](static/cnv-norm.png)
+
+       Searching:
+       With regexes.
+
+   ![search](static/cnv-search.png)
+
+       Admin view:
+       Admins can add and convert boooks
+       Clicking [c] sets the form field to that book.
+
+   ![admin](static/cnv-admin.png)
+
+       About to convert a book:
+
+   ![convert](static/cnv-conv1.png)
+
+       Converting:
+       See how it goes.
+
+   ![convert](static/cnv-conv2.png)
