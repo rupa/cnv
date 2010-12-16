@@ -16,9 +16,20 @@ for kindle, in .htaccess:
     AddType application/x-mobipocket-ebook mobi
     AddType application/octet-stream azw prc
 
-supports basic authentication. in .htaccess:
-    AuthUserFile /path/to/.htpasswd
-    AuthGroupFile /dev/null
-    AuthName "cnv"
-    AuthType Basic
-    require valid-user
+authentication:
+    supports basic authentication. in .htaccess:
+        AuthUserFile /path/to/.htpasswd
+        AuthGroupFile /dev/null
+        AuthName "cnv"
+        AuthType Basic
+        require valid-user
+    only admins can gank/convert
+        add usernames to config:admins
+
+some conversions fail without an X server running (grr)
+    use Xvfb if :0.0 not available
+    see upstart job at static/xvfb.conf
+
+TODO:
+    better xvfb support
+    config option for DISPLAY
