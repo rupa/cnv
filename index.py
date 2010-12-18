@@ -10,9 +10,7 @@ import ConfigParser
 try:
     from mod_python import util
 except:
-    class Req(object):
-        def write(self, str):
-            print str
+    pass
 
 def usage(home, default_type):
     return '''
@@ -54,7 +52,7 @@ formats:
 
     see <a href="http://calibre-ebook.com/user_manual/cli/ebook-convert.html">http://calibre-ebook.com/user_manual/cli/ebook-convert.html</a>
 
-    ''' % (home, default_type, '%s/config' % os.path.dirname(__file__))
+    ''' % (conf.base_url, default_type, '%s/config' % os.path.dirname(__file__))
 
 class Conf(object):
     def __init__(self, c={}):
@@ -70,6 +68,7 @@ class Conf(object):
             self.config.add_section('options')
             self.config.set('options', 'default_type', '.epub')
             self.config.set('options', 'book_path', c['path'] + 'books/')
+            self.config.set('options', 'base_url', c['url'])
             self.config.set('options', 'book_url', c['url'] + 'books/')
             self.config.set('options', 'admins', '')
             self.config.set('options', 'display', '')
@@ -81,6 +80,7 @@ class Conf(object):
         self.ourl = self.config.get('options', 'book_url')
         self.admins = self.config.get('options', 'admins')
         self.display = self.config.get('options', 'display')
+        self.base_url = self.config.get('options', 'base_url')
         if self.admins:
             self.admins = self.admins.split(' ')
         if not os.path.exists(self.odir):
@@ -206,14 +206,15 @@ def index(req):
         req.write('%s' % conf.msg)
 
     if (not conf.admins or req.user in conf.admins) and url == 'help':
-        req.write(usage(home, conf.default_type))
+        req.write(usage(conf.base_url, conf.default_type))
         return
 
     if req.method == 'POST' and url and oext and author and title:
         if conf.admins and req.user not in conf.admins:
-            req.write('\n\n<a href="%s">not allowed ...</a>' % (home))
+            req.write('\n\n<a href="%s">not allowed ...</a>' % (conf.base_url))
             return
         req.write('getting %s...\n' % url)
+        # this might be broken for no admin setups
         urllib._urlopener = MyURLopener().auth(req.user,
                                                req.get_basic_auth_pw())
         iname, headers = from_url(url, conf.odir, title, author)
@@ -223,24 +224,25 @@ def index(req):
         if oext.upper() != 'NONE':
             oname = '%s%s%s' % (conf.odir, norm_book_name(title, author), oext)
             convert(req, iname, oname, title, author, conf.display)
-        req.write('\n\n<a href="%s">done</a>' % (home))
+        req.write('\n\n<a href="%s">done</a>' % (conf.base_url))
     else:
         if not conf.admins or req.user in conf.admins:
             req.write('<a class="t" href="?u=help">Hi, %s</a>' % req.user)
         req.write('''
         <form method="get", action="%s">
         <input value="%s" name="s" size=41> <input type="submit" value="search">
-        </form>''' % (home, srch))
+        </form>''' % (conf.base_url, srch))
         if not conf.admins or req.user in conf.admins:
             req.write('''<form method="post", action="%s">
      u: <input value="%s" name="u" size=50>
      t: <input value="%s" name="t" size=50>
      a: <input value="%s" name="a" size=50>
     to: <input value="%s" name="to" size=10> <input type="submit" value="convert">
-        </form>''' % (home, url, title, author, oext))
+        </form>''' % (conf.base_url, url, title, author, oext))
 
         if not conf.admins or req.user in conf.admins:
-            fmt = '<a class="c" href="%s?u=%s%%s">[c]</a> ' % (home, conf.ourl)
+            fmt = '<a class="c" href="%s?u=%s%%s">[c]</a> ' % (conf.base_url,
+                                                               conf.ourl)
         else:
             fmt = '<a id="%s"></a>'
         fmt = '\n%s<a class="t" title="%%s" href="%%s%%s">%%s</a>' % fmt
@@ -266,7 +268,3 @@ def index(req):
                              conf.ourl,
                              urllib.quote(i),
                              s))
-
-if __name__ == '__main__':
-    req = Req()
-    req.write('this script intended to run under mod_python.')
