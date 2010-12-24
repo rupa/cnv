@@ -1,0 +1,7 @@
+body {
+    white-space: pre;
+    font-family: monospace;
+}
+a { text-decoration: none }
+a.c { color: blue }
+a.t { font-family: helvetica, arial }
