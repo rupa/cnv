@@ -6,4 +6,9 @@ body { font-family: monospace; }
 .form { white-space: pre }
 #books { white-space: pre }
 #convert { white-space: pre }
+#main {
+  width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
 #usage { white-space: pre }
