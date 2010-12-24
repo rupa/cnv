@@ -12,9 +12,9 @@ try:
 except:
     pass
 
-def _usage(home, default_type):
+def _usage(conf):
     return '''
-
+<div id="usage">
 <a class="t" href="%s">[back]</a>
 
 ?u=help
@@ -51,8 +51,10 @@ config:
 formats:
 
     see <a href="http://calibre-ebook.com/user_manual/cli/ebook-convert.html">http://calibre-ebook.com/user_manual/cli/ebook-convert.html</a>
-
-    ''' % (conf.base_url, default_type, '%s/config' % os.path.dirname(__file__))
+    </div>
+    ''' % (conf.base_url,
+           conf.default_type,
+           '%s/config' % os.path.dirname(__file__))
 
 class Conf(object):
     def __init__(self, c={}):
@@ -169,10 +171,13 @@ def _convert(req, fl, ofl, title, author, display):
 def index(req):
 
     head = '''
+    <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+    "http://www.w3.org/TR/html4/strict.dtd">
     <html>
     <head>
+    <meta http-equiv="Content-type" content="text/html;charset=UTF-8">
     <title>cnv</title>
-    <link rel="stylesheet" type="text/css" href="main.css" />
+    <link rel="stylesheet" type="text/css" href="main.css">
     </head>
     <body>
     '''
@@ -203,7 +208,7 @@ def index(req):
         req.write('%s' % conf.msg)
 
     if (not conf.admins or req.user in conf.admins) and url == 'help':
-        req.write(_usage(conf.base_url, conf.default_type))
+        req.write(_usage(conf))
         req.write(tail)
         return
 
@@ -226,24 +231,30 @@ def index(req):
         req.write('\n\n<a href="%s">done</a>' % (conf.base_url))
     else:
         if not conf.admins or req.user in conf.admins:
-            req.write('<a class="t" href="?u=help">Hi, %s</a>' % req.user)
-        req.write('''
-        <form method="get", action="%s">
-        <input value="%s" name="s" size=41> <input type="submit" value="search">
-        </form>''' % (conf.base_url, srch))
+            fmt = '<div id="h" ><a class="t" href="?u=help">Hi, %s</a></div>'
+            req.write(fmt % req.user)
+        req.write('''<form method="get" action="%s">
+    <div class="form">
+    <input value="%s" name="s" size=41> <input type="submit" value="search">
+    </div>
+    </form>''' % (conf.base_url, srch))
         if not conf.admins or req.user in conf.admins:
-            req.write('''<form method="post", action="%s">
-     u: <input value="%s" name="u" size=50>
-     t: <input value="%s" name="t" size=50>
-     a: <input value="%s" name="a" size=50>
-    to: <input value="%s" name="to" size=10> <input type="submit" value="convert">
-        </form>''' % (conf.base_url, url, title, author, oext))
+            req.write('''<form method="post" action="%s">
+    <div class="form">
+ u: <input value="%s" name="u" size=50>
+ t: <input value="%s" name="t" size=50>
+ a: <input value="%s" name="a" size=50>
+to: <input value="%s" name="to" size=10> <input type="submit" value="convert">
+    </div>
+    </form>''' % (conf.base_url, url, title, author, oext))
+
+        req.write('\n<div id="books">')
 
         if not conf.admins or req.user in conf.admins:
             fmt = '<a class="c" href="%s?u=%s%%s">[c]</a> ' % (conf.base_url,
                                                                conf.ourl)
         else:
-            fmt = '<a id="%s"></a>'
+            fmt = '<a title="%s"></a>'
         fmt = '\n%s<a class="t" title="%%s" href="%%s%%s">%%s</a>' % fmt
 
         files = []
@@ -267,4 +278,5 @@ def index(req):
                              conf.ourl,
                              urllib.quote(i),
                              s))
+        req.write('\n</div>')
         req.write(tail)
