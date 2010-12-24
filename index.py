@@ -47,6 +47,7 @@ config:
     book_path    - filesystem path to book dir
     default_type - default to convert to. A value of NONE does not convert.
     book_url     - url of book dir
+    base_url     - url to the script
 
 formats:
 

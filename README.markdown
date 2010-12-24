@@ -36,6 +36,7 @@
         book_path    - filesystem path to book dir
         default_type - default to convert to. A value of NONE does not convert.
         book_url     - url of book dir
+        base_url     - url to the script
 
     make sure apache has write permissions to book_path
 
@@ -74,7 +75,7 @@
 
     Books in library are shown most recently modified first.
 
-    By default, any one can add and convert files. Set up basic authentication
+    By default, anyone can add and convert files. Set up basic authentication
     to restrict users. Add specific users to config to further restrict
     add/convert rights.
 
