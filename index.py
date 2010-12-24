@@ -12,7 +12,7 @@ try:
 except:
     pass
 
-def usage(home, default_type):
+def _usage(home, default_type):
     return '''
 
 <a class="t" href="%s">[back]</a>
@@ -87,7 +87,7 @@ class Conf(object):
             self.msg += 'creating dir %s ...\n' % self.odir
             os.makedirs(self.odir, 0777)
 
-def norm_book_name(title, author):
+def _norm_book_name(title, author):
     '''
     return lname,fname_mname-title
     '''
@@ -111,13 +111,13 @@ class MyURLopener(urllib.FancyURLopener):
     def prompt_user_passwd(self, host, realm):
         return self.user, self.passwd
 
-def from_url(url, odir, title, author):
+def _from_url(url, odir, title, author):
     '''
     grab a book from a url and normalize its filename
     '''
     msg = ''
     iname, iext = os.path.splitext(url)
-    oname = norm_book_name(title, author)
+    oname = _norm_book_name(title, author)
     opath = '%s%s%s' % (odir, oname, iext.lower())
     if os.path.exists(opath):
         return opath, { 'msg' : 'file %s already retrieved' % opath }
@@ -136,13 +136,12 @@ def from_url(url, odir, title, author):
 
     return f, h
 
-def convert(req, fl, ofl, title, author, display):
+def _convert(req, fl, ofl, title, author, display):
     def run(cmd):
         return subprocess.Popen(cmd, shell=True,
                                 stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, close_fds=True)
-
     if not os.path.exists(fl):
         req.write('can\'t find %s' % (fl))
         return
@@ -152,32 +151,42 @@ def convert(req, fl, ofl, title, author, display):
     if display:
         display = 'DISPLAY=%s' % display
 
-    cmd = '%s ebook-convert %s %s --authors="%s" --title="%s"' % (display,
-                                                                  pipes.quote(fl),
-                                                                  pipes.quote(ofl),
-                                                                  author,
-                                                                  title)
+    fmt = '%s ebook-convert %s %s --authors="%s" --title="%s"'
+    cmd = fmt % (display, pipes.quote(fl), pipes.quote(ofl), author, title)
     req.write('running: ' + cmd + '\n\n')
     p = run(cmd)
     req.write(p.stdout.read())
     req.write(p.stderr.read())
     req.write('\n\n')
 
-    cm2 = 'ebook-meta %s' % (pipes.quote(ofl))
-    req.write('running: ' + cm2 + '\n\n')
-    p = run(cm2)
+    cmd = 'ebook-meta %s' % (pipes.quote(ofl))
+    req.write('running: ' + cmd + '\n\n')
+    p = run(cmd)
     req.write(p.stdout.read())
     req.write(p.stderr.read())
     req.write('\n\n')
 
 def index(req):
 
+    head = '''
+    <html>
+    <head>
+    <title>cnv</title>
+    <link rel="stylesheet" type="text/css" href="main.css" />
+    </head>
+    <body>
+    '''
+
+    tail = '''
+    </body>
+    </html>
+    '''
+
     home = 'http://%s%s' % (req.hostname, os.path.dirname(req.uri))
     if not home.endswith('/'):
         home += '/'
     conf = Conf({ 'path' : os.path.dirname(__file__) + '/', 'url' : home })
 
-    req.content_type = 'text/html; charset=utf-8'
     url = req.form.getfirst('u') or ''
     oext = req.form.getfirst('to') or conf.default_type
     author = req.form.getfirst('a') or ''
@@ -187,43 +196,33 @@ def index(req):
     if srch:
         match = re.compile(srch, re.I)
 
-    req.write('''
-        <head>
-        <title>cnv</title>
-        <style>
-            body {
-                white-space: pre;
-                font-family: monospace;
-            }
-            a { text-decoration: none }
-            a.c { color: blue }
-            a.t { font-family: helvetica, arial }
-        </style>
-        </head>
-    ''')
+    req.content_type = 'text/html; charset=utf-8'
+    req.write(head)
 
     if conf.msg:
         req.write('%s' % conf.msg)
 
     if (not conf.admins or req.user in conf.admins) and url == 'help':
-        req.write(usage(conf.base_url, conf.default_type))
+        req.write(_usage(conf.base_url, conf.default_type))
+        req.write(tail)
         return
 
     if req.method == 'POST' and url and oext and author and title:
         if conf.admins and req.user not in conf.admins:
             req.write('\n\n<a href="%s">not allowed ...</a>' % (conf.base_url))
+            req.write(tail)
             return
         req.write('getting %s...\n' % url)
         # this might be broken for no admin setups
         urllib._urlopener = MyURLopener().auth(req.user,
                                                req.get_basic_auth_pw())
-        iname, headers = from_url(url, conf.odir, title, author)
+        iname, headers = _from_url(url, conf.odir, title, author)
         for k,v in headers.items():
             req.write('%s: %s\n' % (k, v))
 
         if oext.upper() != 'NONE':
-            oname = '%s%s%s' % (conf.odir, norm_book_name(title, author), oext)
-            convert(req, iname, oname, title, author, conf.display)
+            oname = '%s%s%s' % (conf.odir, _norm_book_name(title, author), oext)
+            _convert(req, iname, oname, title, author, conf.display)
         req.write('\n\n<a href="%s">done</a>' % (conf.base_url))
     else:
         if not conf.admins or req.user in conf.admins:
@@ -268,3 +267,4 @@ def index(req):
                              conf.ourl,
                              urllib.quote(i),
                              s))
+        req.write(tail)
