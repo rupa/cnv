@@ -140,11 +140,17 @@ def _from_url(url, odir, title, author):
     return f, h
 
 def _convert(req, fl, ofl, title, author, display):
-    def run(cmd):
-        return subprocess.Popen(cmd, shell=True,
-                                stdin=subprocess.PIPE,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, close_fds=True)
+    def run(req, cmd):
+        p = subprocess.Popen(cmd, shell=True,
+                             stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT,
+                             close_fds=True)
+        line = p.stdout.readline()
+        while line:
+            req.write(line)
+            line = p.stdout.readline()
+
     if not os.path.exists(fl):
         req.write('can\'t find %s' % (fl))
         return
@@ -158,15 +164,11 @@ def _convert(req, fl, ofl, title, author, display):
     cmd = fmt % (display, pipes.quote(fl), pipes.quote(ofl), author, title)
     req.write('running: ' + cmd + '\n\n')
     p = run(cmd)
-    req.write(p.stdout.read())
-    req.write(p.stderr.read())
     req.write('\n\n')
 
     cmd = 'ebook-meta %s' % (pipes.quote(ofl))
     req.write('running: ' + cmd + '\n\n')
     p = run(cmd)
-    req.write(p.stdout.read())
-    req.write(p.stderr.read())
     req.write('\n\n')
 
 def index(req):
@@ -206,7 +208,7 @@ def index(req):
     req.write(head)
 
     if conf.msg:
-        req.write('%s' % conf.msg)
+        req.write('<div class="msg">%s</div>' % conf.msg)
 
     if (not conf.admins or req.user in conf.admins) and url == 'help':
         req.write(_usage(conf))
@@ -214,8 +216,10 @@ def index(req):
         return
 
     if req.method == 'POST' and url and oext and author and title:
+        req.write('<div id="convert">')
         if conf.admins and req.user not in conf.admins:
-            req.write('\n\n<a href="%s">not allowed ...</a>' % (conf.base_url))
+            fmt = '\n\n<a href="%s">not allowed ...</a>\n</div>'
+            req.write(fmt % (conf.base_url))
             req.write(tail)
             return
         req.write('getting %s...\n' % url)
@@ -229,18 +233,22 @@ def index(req):
         if oext.upper() != 'NONE':
             oname = '%s%s%s' % (conf.odir, _norm_book_name(title, author), oext)
             _convert(req, iname, oname, title, author, conf.display)
-        req.write('\n\n<a href="%s">done</a>' % (conf.base_url))
-    else:
-        if not conf.admins or req.user in conf.admins:
-            fmt = '<div id="h" ><a class="t" href="?u=help">Hi, %s</a></div>'
-            req.write(fmt % req.user)
-        req.write('''<form method="get" action="%s">
+        req.write('\n\n<a href="%s">done</a>\n</div>' % (conf.base_url))
+        req.write(tail)
+        return
+
+    if conf.admins and req.user in conf.admins:
+        fmt = '<div id="h" ><a class="t" href="?u=help">Hi, %s</a></div>'
+        req.write(fmt % req.user)
+
+    req.write('''<form method="get" action="%s">
     <div class="form">
     <input value="%s" name="s" size=41> <input type="submit" value="search">
     </div>
     </form>''' % (conf.base_url, srch))
-        if not conf.admins or req.user in conf.admins:
-            req.write('''<form method="post" action="%s">
+
+    if not conf.admins or req.user in conf.admins:
+        req.write('''<form method="post" action="%s">
     <div class="form">
  u: <input value="%s" name="u" size=50>
  t: <input value="%s" name="t" size=50>
@@ -249,35 +257,36 @@ to: <input value="%s" name="to" size=10> <input type="submit" value="convert">
     </div>
     </form>''' % (conf.base_url, url, title, author, oext))
 
-        req.write('\n<div id="books">')
+    req.write('\n<div id="books">')
 
-        if not conf.admins or req.user in conf.admins:
-            fmt = '<a class="c" href="%s?u=%s%%s">[c]</a> ' % (conf.base_url,
-                                                               conf.ourl)
+    if not conf.admins or req.user in conf.admins:
+        fmt = '<a class="c" href="%s?u=%s%%s">[c]</a> ' % (conf.base_url,
+                                                           conf.ourl)
+    else:
+        fmt = '<a title="%s"></a>'
+    fmt = '\n%s<a class="t" title="%%s" href="%%s%%s">%%s</a>' % fmt
+
+    files = []
+    for file in os.listdir(conf.odir):
+        stats = os.stat(conf.odir + file)
+        files.append((time.localtime(stats[8]), file, stats[6]))
+
+    for (dt, i, sz) in sorted(files, reverse=True):
+        if i.startswith('.'):
+            continue
+        if os.path.isdir('%s%s' % (conf.odir, i)):
+            continue
+        if srch and not match.search(i):
+            continue
+        if len(i) > 65:
+            s = '%s ...' % i[:65]
         else:
-            fmt = '<a title="%s"></a>'
-        fmt = '\n%s<a class="t" title="%%s" href="%%s%%s">%%s</a>' % fmt
+            s = i
+        req.write(fmt % (urllib.quote(i),
+                         '%sK' % (sz//1024),
+                         conf.ourl,
+                         urllib.quote(i),
+                         s))
 
-        files = []
-        for file in os.listdir(conf.odir):
-            stats = os.stat(conf.odir + file)
-            files.append((time.localtime(stats[8]), file, stats[6]))
-
-        for (dt, i, sz) in sorted(files, reverse=True):
-            if i.startswith('.'):
-                continue
-            if os.path.isdir('%s%s' % (conf.odir, i)):
-                continue
-            if srch and not match.search(i):
-                continue
-            if len(i) > 65:
-                s = '%s ...' % i[:65]
-            else:
-                s = i
-            req.write(fmt % (urllib.quote(i),
-                             '%sK' % (sz//1024),
-                             conf.ourl,
-                             urllib.quote(i),
-                             s))
-        req.write('\n</div>')
-        req.write(tail)
+    req.write('\n</div>')
+    req.write(tail)

@@ -5,4 +5,5 @@ a.t { font-family: helvetica, arial }
 body { font-family: monospace; }
 .form { white-space: pre }
 #books { white-space: pre }
+#convert { white-space: pre }
 #usage { white-space: pre }
