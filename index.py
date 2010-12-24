@@ -155,7 +155,7 @@ def _convert(req, fl, ofl, title, author, display):
         req.write('can\'t find %s' % (fl))
         return
     if os.path.exists(ofl):
-        req.write('%s already exists' % (fl))
+        req.write('%s already exists' % (ofl))
         return
     if display:
         display = 'DISPLAY=%s' % display
@@ -243,16 +243,16 @@ def index(req):
 
     req.write('''<form method="get" action="%s">
     <div class="form">
-    <input value="%s" name="s" size=41> <input type="submit" value="search">
+    <input value="%s" name="s" size=56> <input type="submit" value="search">
     </div>
     </form>''' % (conf.base_url, srch))
 
     if not conf.admins or req.user in conf.admins:
         req.write('''<form method="post" action="%s">
     <div class="form">
- u: <input value="%s" name="u" size=50>
- t: <input value="%s" name="t" size=50>
- a: <input value="%s" name="a" size=50>
+ u: <input value="%s" name="u" size=65>
+ t: <input value="%s" name="t" size=65>
+ a: <input value="%s" name="a" size=65>
 to: <input value="%s" name="to" size=10> <input type="submit" value="convert">
     </div>
     </form>''' % (conf.base_url, url, title, author, oext))
