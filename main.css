@@ -1,14 +1,28 @@
 a { text-decoration: none }
 a:hover { text-decoration: underline }
-a.c { color: blue }
-a.t { font-family: helvetica, arial }
-body { font-family: monospace; }
+
+body { font-family: Deja Vu Sans Mono, monospace; }
 .form { white-space: pre }
 #books { white-space: pre }
 #convert { white-space: pre }
+#help { text-align: right }
 #main {
-  width: 600px;
-  margin-left: auto;
-  margin-right: auto;
+    width: 600px;
+    margin-left: auto;
+    margin-right: auto;
 }
 #usage { white-space: pre }
+
+a.c { color: blue }
+a.t { font-family: helvetica, arial }
+
+#booktable {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+#booktable td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

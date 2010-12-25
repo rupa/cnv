@@ -4,6 +4,7 @@
     uses calibre's ebook-convert and ebook-meta tools.
     gank, normalize, convert, and download ebooks.
 
+    Optimized for and tested with iphone and kindle.
     The idea is you can use it from a kindle or iphone or whatever,
     with just a web browser.
 
@@ -42,9 +43,13 @@
 
     Set up .htaccess authentication and/or mimetypes
 
+    Optional:
+        put a copy of [sorttable.js](http://www.kryogenix.org/code/browser/sorttable/) next to index.py to make the books sortable
+        by alphabet.
+
 ##HTACCESS
 
-    mimetypes for kindle downloading:
+    mimetypes for kindle to recognize these as downloadable:
         AddType application/x-mobipocket-ebook mobi
         AddType application/octet-stream azw prc
 

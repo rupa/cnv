@@ -106,6 +106,15 @@ def _norm_book_name(title, author):
         nauth = lname
     return '%s-%s' % (nauth.replace(' ', '_'), title.replace(' ', '_'))
 
+def _denorm_book_name(name):
+    m = re.search('^([^,]*),([^-]*)-(.*)$', name.replace('_', ' '))
+    if m:
+        l, f, t = m.group(1).strip(), m.group(2).strip(), m.group(3).strip()
+    else:
+        l, f, t = 'Unknown', '', name
+    t, ext = os.path.splitext(t)
+    return l, f, t, ext
+
 class MyURLopener(urllib.FancyURLopener):
     def auth(self, user, passwd):
         self.user = user
@@ -179,8 +188,11 @@ def index(req):
     <html>
     <head>
     <meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+    <meta name="viewport" content="width=device-width; initial-scale=1.0;
+                          maximum-scale=1.6; user-scalable=1;">
     <title>cnv</title>
     <link rel="stylesheet" type="text/css" href="main.css">
+    <script src="sorttable.js"></script>
     </head>
     <body>
     <div id="main">
@@ -240,10 +252,10 @@ def index(req):
         return
 
     if conf.admins and req.user in conf.admins:
-        fmt = '<div id="h" ><a class="t" href="?u=help">Hi, %s</a></div>'
+        fmt = '<div id="help" ><a class="t" href="?u=help">hi, %s</a></div>\n'
         req.write(fmt % req.user)
 
-    req.write('''<form method="get" action="%s">
+    req.write('''    <form method="get" action="%s">
     <div class="form">
     <input value="%s" name="s" size=41> <input type="submit" value="search">
     </div>
@@ -266,12 +278,17 @@ to: <input value="%s" name="to" size=10> <input type="submit" value="convert">
                                                            conf.ourl)
     else:
         fmt = '<a title="%s"></a>'
-    fmt = '\n%s<a class="t" title="%%s" href="%%s%%s">%%s</a>' % fmt
+    fmt = '%s<a class="t" title="%%s" href="%%s%%s">%%s</a>' % fmt
+    fmt = '\n<tr><td>%s</td></tr>' % fmt
 
     files = []
     for file in os.listdir(conf.odir):
         stats = os.stat(conf.odir + file)
         files.append((time.localtime(stats[8]), file, stats[6]))
+
+    req.write('\n<table id="booktable" class="sortable">')
+    req.write('\n<col id="library">')
+    req.write('\n<tr><th>A-Z</th></tr>')
 
     for (dt, i, sz) in sorted(files, reverse=True):
         if i.startswith('.'):
@@ -280,15 +297,11 @@ to: <input value="%s" name="to" size=10> <input type="submit" value="convert">
             continue
         if srch and not match.search(i):
             continue
-        if len(i) > 65:
-            s = '%s ...' % i[:65]
-        else:
-            s = i
         req.write(fmt % (urllib.quote(i),
                          '%sK' % (sz//1024),
                          conf.ourl,
                          urllib.quote(i),
-                         s))
+                         i))
 
-    req.write('\n</div>')
+    req.write('\n</table>\n</div>')
     req.write(tail)
