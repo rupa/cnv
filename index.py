@@ -172,12 +172,12 @@ def _convert(req, fl, ofl, title, author, display):
     fmt = '%s ebook-convert %s %s --authors="%s" --title="%s"'
     cmd = fmt % (display, pipes.quote(fl), pipes.quote(ofl), author, title)
     req.write('running: ' + cmd + '\n\n')
-    p = run(cmd)
+    p = run(req, cmd)
     req.write('\n\n')
 
     cmd = 'ebook-meta %s' % (pipes.quote(ofl))
     req.write('running: ' + cmd + '\n\n')
-    p = run(cmd)
+    p = run(req, cmd)
     req.write('\n\n')
 
 def index(req):
