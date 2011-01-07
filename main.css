@@ -1,26 +1,37 @@
 a { text-decoration: none }
+a.c { color: blue }
+a.t { font-family: Calibri, Helvetica, Arial, sans-serif; }
 a:hover { text-decoration: underline }
 
-body { font-family: Deja Vu Sans Mono, monospace; }
+body { font-family: Consolas, Deja Vu Sans Mono, monospace; }
+
+br { display: none }
+
 .form { white-space: pre }
+
 #books { white-space: pre }
-#convert { white-space: pre }
+
+#convert {
+    width: 100%;
+    white-space: pre-wrap;
+}
+
 #help { text-align: right }
+
 #main {
     width: 600px;
     margin-left: auto;
     margin-right: auto;
 }
-#usage { white-space: pre }
 
-a.c { color: blue }
-a.t { font-family: helvetica, arial }
+#usage { white-space: pre }
 
 #booktable {
     width: 100%;
     table-layout: fixed;
     border-collapse: collapse;
 }
+
 #booktable td {
     white-space: nowrap;
     overflow: hidden;

@@ -264,9 +264,9 @@ def index(req):
     if not conf.admins or req.user in conf.admins:
         req.write('''<form method="post" action="%s">
     <div class="form">
- u: <input value="%s" name="u" size=50>
- t: <input value="%s" name="t" size=50>
- a: <input value="%s" name="a" size=50>
+ u: <input value="%s" name="u" size=50><br>
+ t: <input value="%s" name="t" size=50><br>
+ a: <input value="%s" name="a" size=50><br>
 to: <input value="%s" name="to" size=10> <input type="submit" value="convert">
     </div>
     </form>''' % (conf.base_url, url, title, author, oext))
