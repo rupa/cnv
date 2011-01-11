@@ -243,7 +243,6 @@ def index(req):
         iname, headers = _from_url(url, conf.odir, title, author)
         for k,v in headers.items():
             req.write('%s: %s\n' % (k, v))
-
         if oext.upper() != 'NONE':
             oname = '%s%s%s' % (conf.odir, _norm_book_name(title, author), oext)
             _convert(req, iname, oname, title, author, conf.display)
@@ -262,7 +261,7 @@ def index(req):
     </form>''' % (conf.base_url, srch))
 
     if not conf.admins or req.user in conf.admins:
-        req.write('''<form method="post" action="%s">
+        req.write('''<form name="cnv" method="post" action="%s">
     <div class="form">
  u: <input value="%s" name="u" size=50><br>
  t: <input value="%s" name="t" size=50><br>
@@ -271,33 +270,34 @@ to: <input value="%s" name="to" size=10> <input type="submit" value="convert">
     </div>
     </form>''' % (conf.base_url, url, title, author, oext))
 
-    req.write('\n<div id="books">')
-
-    if not conf.admins or req.user in conf.admins:
-        fmt = '<a class="c" href="%s?u=%s%%s">[c]</a> ' % (conf.base_url,
-                                                           conf.ourl)
-    else:
-        fmt = '<a title="%s"></a>'
-    fmt = '%s<a class="t" title="%%s" href="%%s%%s">%%s</a>' % fmt
-    fmt = '\n<tr><td>%s</td></tr>' % fmt
-
     files = []
     for file in os.listdir(conf.odir):
+        if file.startswith('.'):
+            continue
+        if os.path.isdir('%s%s' % (conf.odir, file)):
+            continue
+        if srch and not match.search(file.replace('_', ' ')):
+            continue
         stats = os.stat(conf.odir + file)
         files.append((time.localtime(stats[8]), file, stats[6]))
 
+    if conf.admins and req.user in conf.admins:
+        fmt = '<a class="c" onmouseover="cnv.u.value=\'%s%%s\'"' % conf.ourl
+        fmt = '%s href="%s?u=%s%%s">(c)</a> ' % (fmt, conf.base_url, conf.ourl)
+    else:
+        fmt = '<a title="%s" name="%s"></a>'
+
+    fmt = '%s<a class="t" title="%%s" href="%%s%%s">%%s</a>' % fmt
+    fmt = '\n<tr><td>%s</td></tr>' % fmt
+
+    req.write('\n<div id="books">')
     req.write('\n<table id="booktable" class="sortable">')
     req.write('\n<col id="library">')
     req.write('\n<tr><th>A-Z</th></tr>')
 
     for (dt, i, sz) in sorted(files, reverse=True):
-        if i.startswith('.'):
-            continue
-        if os.path.isdir('%s%s' % (conf.odir, i)):
-            continue
-        if srch and not match.search(i):
-            continue
-        req.write(fmt % (urllib.quote(i),
+        req.write(fmt % (i,
+                         urllib.quote(i),
                          '%sK' % (sz//1024),
                          conf.ourl,
                          urllib.quote(i),
