@@ -52,6 +52,13 @@ config:
 formats:
 
     see <a href="http://calibre-ebook.com/user_manual/cli/ebook-convert.html">http://calibre-ebook.com/user_manual/cli/ebook-convert.html</a>
+
+.htaccess:
+
+    you may need to add the following to book_dir/.htaccess:
+
+    AddType application/x-mobipocket-ebook mobi
+    AddType application/octet-stream azw prc
     </div>
     ''' % (conf.base_url,
            conf.default_type,
@@ -261,8 +268,9 @@ def index(req):
     </form>''' % (conf.base_url, srch))
 
     if not conf.admins or req.user in conf.admins:
-        req.write('''<form name="cnv" method="post" action="%s">
-    <div class="form">
+        req.write('''
+    <form name="cnv" method="post" action="%s">
+    <div id="form" class="form">
  u: <input value="%s" name="u" size=50><br>
  t: <input value="%s" name="t" size=50><br>
  a: <input value="%s" name="a" size=50><br>
@@ -282,10 +290,10 @@ to: <input value="%s" name="to" size=10> <input type="submit" value="convert">
         files.append((time.localtime(stats[8]), file, stats[6]))
 
     if conf.admins and req.user in conf.admins:
-        fmt = '<a class="c" onmouseover="cnv.u.value=\'%s%%s\'"' % conf.ourl
-        fmt = '%s href="%s?u=%s%%s">(c)</a> ' % (fmt, conf.base_url, conf.ourl)
+        fmt = '<a class="c" onmouseover="cnv.u.value=\'%s%%s\';cnv.t.value=\'%%s\';cnv.a.value=\'%%s\'"' % conf.ourl
+        fmt = '%s href="%s?u=%s%%s&t=%%s&a=%%s">(c)</a> ' % (fmt, conf.base_url, conf.ourl)
     else:
-        fmt = '<a title="%s" name="%s"></a>'
+        fmt = '<a title="%s" name="%s%s%s%s%s"></a>'
 
     fmt = '%s<a class="t" title="%%s" href="%%s%%s">%%s</a>' % fmt
     fmt = '\n<tr><td>%s</td></tr>' % fmt
@@ -296,8 +304,13 @@ to: <input value="%s" name="to" size=10> <input type="submit" value="convert">
     req.write('\n<tr><th>A-Z</th></tr>')
 
     for (dt, i, sz) in sorted(files, reverse=True):
-        req.write(fmt % (i,
+        l, f, t, ext = _denorm_book_name(i)
+        req.write(fmt % (i.replace('\'', '\\\''),
+                         t.replace('\'', '\\\''),
+                         '%s %s' % (f, l),
                          urllib.quote(i),
+                         urllib.quote(t),
+                         urllib.quote('%s %s' % (f,l)),
                          '%sK' % (sz//1024),
                          conf.ourl,
                          urllib.quote(i),
